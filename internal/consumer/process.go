@@ -3,11 +3,9 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
 	"sync"
+
+	mongo "webhook-consumer/internal/mongo"
 
 	kafka "github.com/segmentio/kafka-go"
 )
@@ -15,8 +13,13 @@ import (
 func ProcessMessage(m kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
 	defer wg.Done()
 	defer func() { <-sem }()
+	const TAG = "webhook-consumer"
 
 	msg := KafkaMessage{}
+
+	msg.ca = m.Time
+	msg.offset = 0
+
 	var err error = nil
 
 	if err = json.Unmarshal(m.Value, &msg); err != nil {
@@ -42,52 +45,29 @@ func ProcessMessage(m kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
 		return
 	}
 
-	var requestBody []byte
-	if requestBody, err = json.Marshal(payload); err != nil {
-		return
-	}
+	if msg.Meta["uniqueWebhook"] == 1 {
+		isUnique, err := mongo.IsUniqueCallAttempt(msg.CidNum, msg.CallNum, msg.UID)
 
-	var req *http.Request
-	if req, err = http.NewRequest(strings.ToUpper(msg.Hm), msg.URL, nil); err != nil {
-		return
-	}
+		if !isUnique {
+			return
+		}
 
-	var parsedURL *url.URL
-
-	if parsedURL, err = url.Parse(req.URL.String()); err != nil {
-		return
-	}
-
-	// loop through headers
-	for k, v := range msg.Hdr {
-		req.Header.Add(k, fmt.Sprint(v))
-	}
-
-	if msg.Hm == "POST" {
-		if msg.Hdr["content-type"] == "application/json" {
-			req.Body = io.NopCloser(strings.NewReader(string(requestBody)))
-		} else if msg.Hdr["content-type"] == "application/x-www-form-urlencoded" {
-			values := url.Values{}
-			for k, v := range payload {
-				values.Add(k, fmt.Sprint(v))
+		if err != nil {
+			logObject := mongo.ErrorLog{
+				Priority:  "error",
+				Message:   "Error occurred while checking for unique call",
+				UserID:    0,
+				Tag:       TAG,
+				Exception: err,
+				Env: map[string]interface{}{
+					"topic":     m.Topic,
+					"logObject": msg,
+				},
 			}
-			req.Body = io.NopCloser(strings.NewReader(values.Encode()))
+			mongo.InsertErrorLog(&logObject)
 		}
-	} else {
-		query := parsedURL.Query()
-		for k, v := range payload {
-			query.Add(k, fmt.Sprint(v))
-		}
-		query.Add("test", "test")
-		parsedURL.RawQuery = query.Encode()
+
 	}
 
-	req.URL = parsedURL
-
-	makeApiCall(req)
-
-	// Print the response status and body
-	// fmt.Println("Response Status:", resp.Status)
-	// fmt.Println("Response Body:", string(body))
-
+	prepareRequest(&msg, payload)
 }

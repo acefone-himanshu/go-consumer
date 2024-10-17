@@ -1,5 +1,7 @@
 package consumer
 
+import "time"
+
 type KafkaMessage struct {
 	UID       int64       `json:"u_id"`
 	CID       string      `json:"c_id"`
@@ -17,6 +19,11 @@ type KafkaMessage struct {
 	Meta      Meta        `json:"meta"`
 	Ch        string      `json:"ch"`
 	Partition int64       `json:"partition"`
+	ca        time.Time
+	offset    int64
+	rsp_c     int
+	rsp_t     int
+	rsp       string
 }
 
 type BillingCircle struct {
