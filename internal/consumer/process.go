@@ -36,10 +36,11 @@ func ProcessMessage(m kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
 		}
 	case map[string]interface{}:
 		// Convert the map into a structured object if needed
-		jsonBytes, _ := json.Marshal(v)
-		if err = json.Unmarshal(jsonBytes, &payload); err != nil {
-			return
-		}
+		// jsonBytes, _ := json.Marshal(v)
+		// if err = json.Unmarshal(jsonBytes, &payload); err != nil {
+		// 	return
+		// }
+		payload = v
 	default:
 		fmt.Println("Unknown pyld type")
 		return

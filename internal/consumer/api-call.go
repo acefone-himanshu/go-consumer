@@ -101,7 +101,7 @@ func makeApiCall(req *http.Request) (*http.Response, error) {
 	// 	return resp, err
 	// }
 
-	_ = body
+	// _ = body
 
 	return resp, err
 }
