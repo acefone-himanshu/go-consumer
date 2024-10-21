@@ -77,9 +77,6 @@ func prepareRequest(msg *KafkaMessage, payload Pyld) {
 	msg.rsp = string(body)
 
 	_ = res
-	// Print the response status and body
-	// fmt.Println("Response Status:", resp.Status)
-	// fmt.Println("Response Body:", string(body))
 
 }
 
@@ -96,12 +93,6 @@ func makeApiCall(req *http.Request) (*http.Response, error) {
 	}
 
 	defer resp.Body.Close()
-
-	// if body, err = io.ReadAll(resp.Body); err != nil {
-	// 	return resp, err
-	// }
-
-	// _ = body
 
 	return resp, err
 }
