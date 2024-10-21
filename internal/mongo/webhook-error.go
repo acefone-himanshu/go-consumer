@@ -30,10 +30,10 @@ type WebhookError struct {
 	RAt     time.Time   `bson:"r_at"`     // Received at (Date)
 }
 
-var webhook_error_log_collection = database.Collection("webhook_error_logs")
-
 func InsertWebhookErrorLog(webhookError *WebhookError) {
-	_, error := webhook_error_log_collection.InsertOne(ctx, webhookError)
+	collection := client.Database(database).Collection("webhook_error_logs")
+
+	_, error := collection.InsertOne(ctx, webhookError)
 
 	if error != nil {
 		logger.Logger.Error("Can not insert webhook error log", error, webhookError)

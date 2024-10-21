@@ -31,11 +31,10 @@ type Webhook struct {
 	E       interface{} `bson:"e"`        // Mixed type (Schema.Types.Mixed)
 }
 
-var webhook_collection = database.Collection("webhook_logs_new")
-
 func InsertWebhook(webhook *Webhook) {
+	collection := client.Database(database).Collection("webhook_logs_new")
 
-	_, error := webhook_collection.InsertOne(ctx, webhook)
+	_, error := collection.InsertOne(ctx, webhook)
 
 	if error != nil {
 		logger.Logger.Error("Can not insert webhook", error, webhook)

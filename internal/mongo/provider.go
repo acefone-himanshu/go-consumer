@@ -33,11 +33,10 @@ type ProviderAPI struct {
 	E       interface{} `bson:"e"`      // Use interface{} for dynamic objects
 }
 
-var provider_api_collection = database.Collection("provider_api_logs")
-
 func InsertProviderWebhook(providerAPI *ProviderAPI) {
+	collection := client.Database(database).Collection("provider_api")
 
-	_, err := provider_api_collection.InsertOne(ctx, providerAPI)
+	_, err := collection.InsertOne(ctx, providerAPI)
 	if err != nil {
 		logger.Logger.Error("Can not insert provider api", err, providerAPI)
 		return

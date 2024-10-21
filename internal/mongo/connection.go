@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -10,7 +11,9 @@ import (
 )
 
 var ctx = context.TODO()
-var database *mongo.Database
+var client *mongo.Client
+
+const database = "webhook"
 
 func init() {
 	mongoURI := os.Getenv("MONGO_URI")
@@ -19,11 +22,17 @@ func init() {
 		log.Fatal("MONGO_URI is not set")
 	}
 
+	var err error
+
 	clientOptions := options.Client().ApplyURI(mongoURI)
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err = mongo.Connect(ctx, clientOptions)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	database = client.Database("webhook")
+	defer client.Disconnect(ctx)
+
+	fmt.Println("Connected to MongoDB")
+
 }

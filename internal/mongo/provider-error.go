@@ -15,10 +15,10 @@ type ProviderErrorLog struct {
 	CreatedAt time.Time   `bson:"created_at"`
 }
 
-var provider_error_log_collection = database.Collection("provider_error_logs")
-
 func InsertProviderErrorLog(errLog *ProviderErrorLog) {
-	_, error := provider_error_log_collection.InsertOne(ctx, errLog)
+	collection := client.Database(database).Collection("provider_error_logs")
+
+	_, error := collection.InsertOne(ctx, errLog)
 
 	if error != nil {
 		logger.Logger.Error("Can not insert provider error log", error, errLog)

@@ -22,3 +22,13 @@ func GetKafkaReader() *kafka.Reader {
 		MaxBytes: 10e6, // 10MB
 	})
 }
+
+func GetKafkaWriter() *kafka.Writer {
+
+	kfakaBrokers := os.Getenv("KAFKA_BROKERS")
+	brokers := strings.Split(kfakaBrokers, ",")
+
+	return kafka.NewWriter(kafka.WriterConfig{
+		Brokers: brokers,
+	})
+}

@@ -14,9 +14,9 @@ type WebhookLogCache struct {
 	Ca         time.Time `bson:"ca"`           // Created at (Date)
 }
 
-var collection = database.Collection("unique_webhook_logs_cache")
-
 func InsertWEbhookLogCache(webhookLog *WebhookLogCache) {
+	collection := client.Database(database).Collection("unique_webhook_logs_cache")
+
 	_, error := collection.InsertOne(ctx, webhookLog)
 
 	if error != nil {
@@ -26,6 +26,8 @@ func InsertWEbhookLogCache(webhookLog *WebhookLogCache) {
 }
 
 func IsUniqueCallAttempt(cid_num string, call_num string, u_id int64) (bool, error) {
+	collection := client.Database(database).Collection("unique_webhook_logs_cache")
+
 	filter := bson.M{
 		"cid_call_num": cid_num + "_" + call_num,
 		"u_id":         u_id,

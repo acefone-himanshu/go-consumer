@@ -38,9 +38,8 @@ func main() {
 		<-sigs
 		fmt.Println("\nReceived shutdown signal. Waiting for ongoing processes to complete...")
 		ticker.Stop()
-		reader.Close() // Stop fetching new messages
-		close(sem)     // Ensure all slots in the semaphore are freed
-		wg.Wait()      // Wait for all workers to finish
+		close(sem) // Ensure all slots in the semaphore are freed
+		wg.Wait()  // Wait for all workers to finish
 		os.Exit(0)
 	}()
 

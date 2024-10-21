@@ -15,10 +15,10 @@ type ErrorLog struct {
 	CreatedAt time.Time   `bson:"created_at"` // Use time.Time for date fields
 }
 
-var error_log_collection = database.Collection("logs")
-
 func InsertErrorLog(errLog *ErrorLog) {
-	_, error := error_log_collection.InsertOne(ctx, errLog)
+	collection := client.Database(database).Collection("logs")
+
+	_, error := collection.InsertOne(ctx, errLog)
 
 	if error != nil {
 		logger.Logger.Error("Can not insert error log", error, errLog)
