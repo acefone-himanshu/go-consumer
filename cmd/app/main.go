@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"runtime"
@@ -13,6 +12,7 @@ import (
 
 	config "webhook-consumer/internal/config"
 	consumer "webhook-consumer/internal/consumer"
+	"webhook-consumer/internal/logger"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 	reader := config.GetKafkaReader()
 	defer reader.Close()
 
-	fmt.Println("start consuming ... !!")
+	logger.Logger.Info("start consuming ... !!")
 
 	var wg sync.WaitGroup
 
@@ -41,7 +41,7 @@ func main() {
 		sigs := make(chan os.Signal, 1)
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
-		fmt.Println("\nReceived shutdown signal. Waiting for ongoing processes to complete...")
+		logger.Logger.Warn("Received shutdown signal. Waiting for ongoing processes to complete...")
 		cancel()
 	}()
 
@@ -49,7 +49,8 @@ func main() {
 	go func() {
 		for range ticker.C {
 			goroutines := runtime.NumGoroutine()
-			fmt.Printf("Messages processed in last 1 second: %d, Total: %d\n", messageCount, goroutines)
+			message := fmt.Sprintf("Messages processed in last 1 second: %d, Total: %d\n", messageCount, goroutines)
+			logger.Logger.Info(message)
 			messageCount = 0
 		}
 	}()
@@ -67,7 +68,7 @@ func main() {
 				if err == context.Canceled {
 					return
 				}
-				log.Println("Error fetching message:", err)
+				logger.Logger.Error("Error fetching message:", err)
 				continue
 			}
 

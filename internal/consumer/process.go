@@ -2,7 +2,6 @@ package consumer
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -44,7 +43,7 @@ func ProcessMessage(event *kafka.Message, wg *sync.WaitGroup, sem chan struct{})
 		// }
 		payload = v
 	default:
-		fmt.Println("Unknown pyld type")
+		logger.Logger.Error("Unknow type")
 		return
 	}
 

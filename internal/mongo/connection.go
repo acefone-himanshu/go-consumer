@@ -2,9 +2,9 @@ package mongo
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
+	"webhook-consumer/internal/logger"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -33,6 +33,6 @@ func init() {
 
 	defer client.Disconnect(ctx)
 
-	fmt.Println("Connected to MongoDB")
+	logger.Logger.Info("Connected to MongoDB")
 
 }
