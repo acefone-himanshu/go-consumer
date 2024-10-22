@@ -9,10 +9,13 @@ require (
 	go.mongodb.org/mongo-driver v1.17.1
 )
 
-require github.com/pierrec/lz4/v4 v4.1.15 // indirect
+require (
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
+)
 
 require (
-	github.com/confluentinc/confluent-kafka-go/v2 v2.6.0
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
