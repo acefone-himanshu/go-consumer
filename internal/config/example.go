@@ -42,6 +42,7 @@ const testMessage = `{
 func CreateExample() {
 
 	writer := GetKafkaWriter()
+	defer writer.Close()
 
 	var messagesArray [1000]kafka.Message
 
