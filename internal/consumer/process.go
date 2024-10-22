@@ -4,27 +4,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
+	"webhook-consumer/internal/logger"
 	mongo "webhook-consumer/internal/mongo"
 
 	kafka "github.com/segmentio/kafka-go"
 )
 
-func ProcessMessage(m kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
+func ProcessMessage(event *kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
 	defer wg.Done()
 	defer func() { <-sem }()
 	const TAG = "webhook-consumer"
 
 	msg := KafkaMessage{}
 
-	msg.ca = m.Time
-	msg.offset = 0
-
 	var err error = nil
 
-	if err = json.Unmarshal(m.Value, &msg); err != nil {
+	if err = json.Unmarshal(event.Value, &msg); err != nil {
 		return
 	}
+
+	msg.ca = time.Now()
+	msg.offset = 0
 
 	var payload Pyld
 
@@ -46,7 +48,10 @@ func ProcessMessage(m kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
 		return
 	}
 
-	if msg.Meta["uniqueWebhook"] == 1 {
+	msg.Pyld = payload
+
+	// TODO : change to 1
+	if msg.Meta["uniqueWebhook"] == 10 {
 		isUnique, err := mongo.IsUniqueCallAttempt(msg.CidNum, msg.CallNum, msg.UID)
 
 		if !isUnique {
@@ -61,14 +66,15 @@ func ProcessMessage(m kafka.Message, wg *sync.WaitGroup, sem chan struct{}) {
 				Tag:       TAG,
 				Exception: err,
 				Env: map[string]interface{}{
-					"topic":     m.Topic,
+					"topic":     event.Topic,
 					"logObject": msg,
 				},
 			}
+			logger.Logger.Error("Unable to check uniqueWebhook log", err)
 			mongo.InsertErrorLog(&logObject)
 		}
 
 	}
 
-	prepareRequest(&msg, payload)
+	prepareRequest(&msg, &payload)
 }

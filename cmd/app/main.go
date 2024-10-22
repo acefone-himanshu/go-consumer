@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -21,49 +22,62 @@ func main() {
 
 	fmt.Println("start consuming ... !!")
 
-	const maxWorkers = 10000
 	var wg sync.WaitGroup
+
+	const maxWorkers = 2
 	sem := make(chan struct{}, maxWorkers)
 
 	var messageCount uint64 = 0
+
 	// Ticker to log the count every 1 second
 	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
-	// Graceful shutdown handling
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Goroutine to handle graceful shutdown
 	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 		<-sigs
 		fmt.Println("\nReceived shutdown signal. Waiting for ongoing processes to complete...")
-		ticker.Stop()
-		close(sem) // Ensure all slots in the semaphore are freed
-		wg.Wait()  // Wait for all workers to finish
-		os.Exit(0)
+		cancel()
 	}()
 
+	// Goroutine to log message count
 	go func() {
 		for range ticker.C {
-			fmt.Printf("Messages processed in last 1 second: %d\n", messageCount)
-			// Reset the counter after logging
+			goroutines := runtime.NumGoroutine()
+			fmt.Printf("Messages processed in last 1 second: %d, Total: %d\n", messageCount, goroutines)
 			messageCount = 0
 		}
 	}()
 
 	for {
-		m, err := reader.FetchMessage(context.Background())
-		if err != nil {
-			log.Println("Error fetching message:", err)
-			break
+		select {
+		case <-ctx.Done():
+			close(sem)
+			wg.Wait()
+			return
+
+		default:
+			msg, err := reader.FetchMessage(ctx)
+			if err != nil {
+				if err == context.Canceled {
+					return
+				}
+				log.Println("Error fetching message:", err)
+				continue
+			}
+
+			messageCount++
+			sem <- struct{}{}
+			wg.Add(1)
+
+			go consumer.ProcessMessage(&msg, &wg, sem)
+
 		}
-
-		wg.Add(1)
-
-		// Acquire a slot in the semaphore
-		sem <- struct{}{}
-		messageCount++
-		// Process the message in a goroutine
-		go consumer.ProcessMessage(m, &wg, sem)
 	}
+
 }

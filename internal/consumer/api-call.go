@@ -4,17 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"time"
+	"webhook-consumer/internal/mongo"
 )
 
-const timeout = time.Second * 10
-
-func prepareRequest(msg *KafkaMessage, payload Pyld) {
+func prepareRequest(msg *KafkaMessage, payload *Pyld) {
 	var err error
 	var requestBody []byte
+
+	disableTimeoutUserIdStr := os.Getenv("DISABLE_TIMEOUT_USER_ID")
+	disableTimeoutUserId := 0
+
+	if disableTimeoutUserIdStr != "" {
+		disableTimeoutUserId, _ = strconv.Atoi(disableTimeoutUserIdStr)
+	}
+
+	timeout := time.Second * 10
+
+	if msg.UID == int64(disableTimeoutUserId) {
+		timeout = 0
+	}
 
 	if requestBody, err = json.Marshal(payload); err != nil {
 		return
@@ -27,7 +42,7 @@ func prepareRequest(msg *KafkaMessage, payload Pyld) {
 
 	var parsedURL *url.URL
 
-	if parsedURL, err = url.Parse(req.URL.String()); err != nil {
+	if parsedURL, err = url.Parse("https://webhook.site/db7392ef-4dde-4e0a-826b-1cff0dfe8960"); err != nil {
 		return
 	}
 
@@ -41,14 +56,14 @@ func prepareRequest(msg *KafkaMessage, payload Pyld) {
 			req.Body = io.NopCloser(strings.NewReader(string(requestBody)))
 		} else if msg.Hdr["content-type"] == "application/x-www-form-urlencoded" {
 			values := url.Values{}
-			for k, v := range payload {
+			for k, v := range *payload {
 				values.Add(k, fmt.Sprint(v))
 			}
 			req.Body = io.NopCloser(strings.NewReader(values.Encode()))
 		}
 	} else {
 		query := parsedURL.Query()
-		for k, v := range payload {
+		for k, v := range *payload {
 			query.Add(k, fmt.Sprint(v))
 		}
 		parsedURL.RawQuery = query.Encode()
@@ -56,43 +71,95 @@ func prepareRequest(msg *KafkaMessage, payload Pyld) {
 
 	req.URL = parsedURL
 
-	var res *http.Response
-
 	start_time := time.Now()
-	res, err = makeApiCall(req)
 
-	elapsed := time.Since(start_time)
-
-	if err != nil {
-
-	}
-
-	var body []byte
-
-	if body, err = io.ReadAll(res.Body); err != nil {
-	}
-
-	msg.rsp_c = res.StatusCode
-	msg.rsp_t = int(elapsed.Seconds())
-	msg.rsp = string(body)
-
-	_ = res
-
-}
-
-func makeApiCall(req *http.Request) (*http.Response, error) {
+	// make api call
 	client := &http.Client{
 		Timeout: timeout,
 	}
 
-	var err error
 	var resp *http.Response
 
-	if resp, err = client.Do(req); err != nil {
-		return resp, err
+	if resp, err = client.Do(req); err != nil || true {
+		return
 	}
 
 	defer resp.Body.Close()
 
-	return resp, err
+	elapsed := time.Since(start_time)
+
+	var body []byte
+
+	if body, err = io.ReadAll(resp.Body); err != nil {
+	}
+
+	msg.rsp_c = resp.StatusCode
+	msg.rsp_t = int(elapsed.Seconds())
+	msg.rsp = string(body)
+
+	if resp.StatusCode >= 400 && msg.Re == 1 && msg.Rc < 5 {
+		saveLogForRetries(msg)
+	}
+
+}
+
+func saveLogForRetries(msg *KafkaMessage) {
+	// TODO : remove
+	if true {
+		return
+	}
+
+	now := time.Now()
+	r_at := now.Add(time.Hour * 1)
+	msg.r_at = r_at
+
+	if msg.Rc == 0 {
+		msg.Rc = 0
+	} else {
+		msg.Rc = msg.Rc + 1
+	}
+
+	webhookErrorLog := &mongo.WebhookError{
+		Hm:      msg.Hm,
+		URL:     msg.URL,
+		Hdr:     msg.Hdr,
+		Uid:     int(msg.UID),
+		Swid:    int(msg.SWid),
+		WType:   int(msg.WType),
+		CidNum:  msg.CidNum,
+		CallNum: msg.CallNum,
+		Re:      int(msg.Re),
+		Ac:      msg.AC,
+		CID:     msg.CID,
+		SipD:    int(ipToNumber(msg.SIPD)),
+		Ct:      "",
+		Pyld:    msg.Pyld,
+		Ca:      msg.ca,
+		Rsp:     msg.rsp,
+		RspC:    msg.rsp_c,
+		RspT:    msg.rsp_t,
+		Rc:      int(msg.Rc),
+		Ch:      msg.Ch,
+		Offset:  int(msg.offset),
+		RAt:     msg.r_at,
+	}
+	mongo.InsertWebhookErrorLog(webhookErrorLog)
+}
+
+func ipToNumber(ipString string) uint32 {
+	ip := net.ParseIP(ipString)
+	if ip == nil {
+		return 0
+	}
+
+	// Ensure it's an IPv4 address
+	ip = ip.To4()
+	if ip == nil {
+		return 0
+	}
+
+	// Convert to uint32
+	result := uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
+
+	return result
 }

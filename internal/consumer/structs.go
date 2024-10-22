@@ -19,11 +19,13 @@ type KafkaMessage struct {
 	Meta      Meta        `json:"meta"`
 	Ch        string      `json:"ch"`
 	Partition int64       `json:"partition"`
+	Rc        int64       `json:"rc"`
 	ca        time.Time
 	offset    int64
 	rsp_c     int
 	rsp_t     int
 	rsp       string
+	r_at      time.Time
 }
 
 type BillingCircle struct {
