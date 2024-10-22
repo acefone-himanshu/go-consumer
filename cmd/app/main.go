@@ -20,15 +20,17 @@ func main() {
 	reader := config.GetKafkaReader()
 	defer reader.Close()
 
-	logger.Logger.Info("start consuming ... !!")
-
 	var wg sync.WaitGroup
 
-	const maxWorkers = 2
+	const maxWorkers = 2000
 	sem := make(chan struct{}, maxWorkers)
 
 	var messageCount uint64 = 0
 
+	intialGoRoutines := runtime.NumGoroutine()
+	startTime := time.Now()
+
+	logger.Logger.Info(intialGoRoutines)
 	// Ticker to log the count every 1 second
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -49,11 +51,18 @@ func main() {
 	go func() {
 		for range ticker.C {
 			goroutines := runtime.NumGoroutine()
+			if goroutines == intialGoRoutines {
+				endTime := time.Now()
+				logger.Logger.Info("Total time taken: ", endTime.Sub(startTime))
+				os.Exit(0)
+			}
 			message := fmt.Sprintf("Messages processed in last 1 second: %d, Total: %d\n", messageCount, goroutines)
 			logger.Logger.Info(message)
 			messageCount = 0
 		}
 	}()
+
+	logger.Logger.Info("start consuming ... !!")
 
 	for {
 		select {
@@ -63,6 +72,7 @@ func main() {
 			return
 
 		default:
+
 			msg, err := reader.FetchMessage(ctx)
 			if err != nil {
 				if err == context.Canceled {
