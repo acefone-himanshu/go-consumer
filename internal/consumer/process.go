@@ -24,9 +24,6 @@ func ProcessMessage(event *kafka.Message, wg *sync.WaitGroup, sem chan struct{})
 		return
 	}
 
-	msg.ca = time.Now()
-	msg.offset = 0
-
 	var payload Pyld
 
 	switch v := msg.Pyld.(type) {
@@ -48,6 +45,8 @@ func ProcessMessage(event *kafka.Message, wg *sync.WaitGroup, sem chan struct{})
 	}
 
 	msg.Pyld = payload
+	msg.ca = time.Now()
+	msg.offset = event.Offset
 
 	// TODO : change to 1
 	if msg.Meta["uniqueWebhook"] == 10 {

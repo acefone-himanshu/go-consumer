@@ -22,7 +22,7 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	const maxWorkers = 2000
+	const maxWorkers = 1000
 	sem := make(chan struct{}, maxWorkers)
 
 	var messageCount uint64 = 0
@@ -85,7 +85,6 @@ func main() {
 			messageCount++
 			sem <- struct{}{}
 			wg.Add(1)
-
 			go consumer.ProcessMessage(&msg, &wg, sem)
 
 		}

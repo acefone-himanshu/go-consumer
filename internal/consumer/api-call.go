@@ -19,15 +19,15 @@ func prepareRequest(msg *KafkaMessage, payload *Pyld) {
 	var requestBody []byte
 
 	disableTimeoutUserIdStr := os.Getenv("DISABLE_TIMEOUT_USER_ID")
-	disableTimeoutUserId := 0
+	disableTimeoutUserId := ""
 
-	if disableTimeoutUserIdStr != "" {
-		disableTimeoutUserId, _ = strconv.Atoi(disableTimeoutUserIdStr)
+	if msg.UID != 0 {
+		disableTimeoutUserId = strconv.FormatInt(msg.UID, 10)
 	}
 
 	timeout := time.Second * 10
 
-	if msg.UID == int64(disableTimeoutUserId) {
+	if disableTimeoutUserIdStr == disableTimeoutUserId {
 		timeout = 0
 	}
 
@@ -42,7 +42,7 @@ func prepareRequest(msg *KafkaMessage, payload *Pyld) {
 
 	var parsedURL *url.URL
 
-	if parsedURL, err = url.Parse("https://webhook.site/db7392ef-4dde-4e0a-826b-1cff0dfe8960"); err != nil {
+	if parsedURL, err = url.Parse(msg.URL); err != nil {
 		return
 	}
 
@@ -94,12 +94,39 @@ func prepareRequest(msg *KafkaMessage, payload *Pyld) {
 	}
 
 	msg.rsp_c = resp.StatusCode
-	msg.rsp_t = int(elapsed.Seconds())
+	msg.rsp_t = elapsed.Seconds()
 	msg.rsp = string(body)
 
 	if resp.StatusCode >= 400 && msg.Re == 1 && msg.Rc < 5 {
 		saveLogForRetries(msg)
 	}
+
+	webhookLog := &mongo.Webhook{
+		Hm:      msg.Hm,
+		URL:     msg.URL,
+		Hdr:     msg.Hdr,
+		Uid:     msg.UID,
+		Swid:    msg.SWid,
+		WType:   msg.WType,
+		CidNum:  msg.CID,
+		CallNum: msg.CallNum,
+		Re:      msg.Re,
+		Ac:      msg.AC,
+		CID:     msg.CID,
+		SipD:    ipToNumber(msg.SIPD),
+		Pyld:    msg.Pyld,
+		Ca:      time.Now(),
+		Rsp:     msg.rsp,
+		RspC:    msg.rsp_c,
+		RspT:    msg.rsp_t,
+		Rc:      msg.rsp_c,
+		Ch:      msg.Ch,
+		Offset:  msg.offset,
+		Meta:    msg.Meta,
+		E:       err,
+	}
+
+	mongo.InsertWebhookLog(webhookLog)
 
 }
 

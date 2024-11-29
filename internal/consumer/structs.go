@@ -11,7 +11,7 @@ type KafkaMessage struct {
 	URL       string      `json:"url"`
 	Hm        string      `json:"hm"`
 	Hdr       Hdr         `json:"hdr"`
-	WType     int64       `json:"w_type"`
+	WType     int         `json:"w_type"`
 	Re        int64       `json:"re"`
 	CidNum    string      `json:"cid_num"`
 	CallNum   string      `json:"call_num"`
@@ -23,7 +23,7 @@ type KafkaMessage struct {
 	ca        time.Time
 	offset    int64
 	rsp_c     int
-	rsp_t     int
+	rsp_t     float64
 	rsp       string
 	r_at      time.Time
 }

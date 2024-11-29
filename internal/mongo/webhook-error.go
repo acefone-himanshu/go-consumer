@@ -23,7 +23,7 @@ type WebhookError struct {
 	Ca      time.Time   `bson:"ca"`       // Created at (Date)
 	Rsp     string      `bson:"rsp"`      // Response message
 	RspC    int         `bson:"rsp_c"`    // Response code
-	RspT    int         `bson:"rsp_t"`    // Response time
+	RspT    float64     `bson:"rsp_t"`    // Response time
 	Rc      int         `bson:"rc"`       // Retry count or response code
 	Ch      string      `bson:"ch"`       // Channel
 	Offset  int         `bson:"offset"`   // Offset value
